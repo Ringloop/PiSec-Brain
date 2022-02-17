@@ -14,10 +14,6 @@ type server struct {
 	router   *mux.Router
 }
 
-type okResponse struct {
-	Status string `json:"status"`
-}
-
 // NewServer creates a server with router and does all things from here
 func NewServer() {
 	s := &server{&Denylist{}, mux.NewRouter()}
@@ -26,11 +22,6 @@ func NewServer() {
 }
 
 func (s *server) insertUrl() http.HandlerFunc {
-
-	type UrlsBulkRequest struct {
-		Indicators []string `json:"inticators"`
-		Source     string
-	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -47,7 +38,7 @@ func (s *server) insertUrl() http.HandlerFunc {
 			return
 		}
 
-		ok, err := json.Marshal(okResponse{"Ok"})
+		ok, err := json.Marshal(OkResponse{"Ok"})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
