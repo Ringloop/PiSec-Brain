@@ -14,5 +14,5 @@ import (
 )
 
 func main() {
-	brain.NewServer()
+	brain.NewBrainServer()
 }

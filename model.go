@@ -10,6 +10,13 @@ type Indicator struct {
 	Ip  string `json:"ip"`
 }
 
+type ElasticIndicator struct {
+	Url    string
+	Ip     []string
+	Source string
+	//TODO dates
+}
+
 type OkResponse struct {
 	Status string `json:"status"`
 }

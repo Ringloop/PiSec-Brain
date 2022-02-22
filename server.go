@@ -14,8 +14,14 @@ type server struct {
 	router   *mux.Router
 }
 
+func NewTestServer() *server {
+	s := &server{&Denylist{}, mux.NewRouter()}
+	s.routes()
+	return s
+}
+
 // NewServer creates a server with router and does all things from here
-func NewServer() {
+func NewBrainServer() {
 	s := &server{&Denylist{}, mux.NewRouter()}
 	s.routes()
 	log.Fatalln(http.ListenAndServe(":8080", s.router))
@@ -43,6 +49,8 @@ func (s *server) insertUrl() http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		s.denylist.AddUrls(&indicators)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(ok)
