@@ -6,8 +6,9 @@ type UrlsBulkRequest struct {
 }
 
 type Indicator struct {
-	Url string `json:"url"`
-	Ip  string `json:"ip"`
+	Url         string `json:"url"`
+	Ip          string `json:"ip"`
+	Reliability int    `json:"reliability"`
 }
 
 type ElasticIndicator struct {

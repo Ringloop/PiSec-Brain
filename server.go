@@ -2,6 +2,7 @@ package brain
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -30,6 +31,7 @@ func NewBrainServer() {
 func (s *server) insertUrl() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("serving request...")
 
 		if r.Method != "POST" {
 			http.Error(w, "method not supported", http.StatusBadRequest)

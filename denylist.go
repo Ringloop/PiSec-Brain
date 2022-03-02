@@ -3,9 +3,20 @@ package brain
 import (
 	"fmt"
 	"net"
+
+	"github.com/Ringloop/pisec/elastic"
+	"github.com/elastic/go-elasticsearch/v7/esutil"
 )
 
 type Denylist struct {
+	elasticRepo elastic.ElasticRepository
+	bulkIndexer esutil.BulkIndexer
+}
+
+func NewDenylist() (*Denylist, error) {
+
+	elastic.NewDefaultClient("https://lo")
+
 }
 
 func (*Denylist) AddUrls(indicators *UrlsBulkRequest) error {
