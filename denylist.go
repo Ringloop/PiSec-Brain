@@ -1,7 +1,11 @@
 package brain
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 
 	"github.com/Ringloop/pisec/elastic"
@@ -9,17 +13,27 @@ import (
 )
 
 type Denylist struct {
-	elasticRepo elastic.ElasticRepository
-	bulkIndexer esutil.BulkIndexer
+	elasticRepo *elastic.ElasticRepository
 }
 
 func NewDenylist() (*Denylist, error) {
-
-	elastic.NewDefaultClient("https://lo")
-
+	es, err := elastic.NewClient("https://localhost:9200", "elastic", "integration-test") //todo config here...
+	if err != nil {
+		fmt.Println("cannot connect to es")
+		return nil, err
+	} else {
+		return &Denylist{es}, nil
+	}
 }
 
-func (*Denylist) AddUrls(indicators *UrlsBulkRequest) error {
+func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
+
+	elasticBulk, err := denyList.elasticRepo.GetBulkIndexer("denylist")
+	if err != nil {
+		return err
+	}
+	defer elasticBulk.Close(context.Background())
+
 	for _, ind := range indicators.Indicators {
 
 		toIndex := &ElasticIndicator{}
@@ -42,6 +56,29 @@ func (*Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 		}
 
 		fmt.Println(toIndex)
+		documentToSend, err := json.Marshal(toIndex)
+		if err != nil {
+			return err
+		}
+
+		bulkItem := esutil.BulkIndexerItem{
+			Action: "index",
+			Body:   bytes.NewBuffer(documentToSend),
+			OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, res esutil.BulkIndexerResponseItem, err error) {
+				if err != nil {
+					log.Printf("ERROR: %s", err)
+				} else {
+					log.Printf("ERROR: %s: %s", res.Error.Type, res.Error.Reason)
+				}
+			},
+		}
+
+		err = elasticBulk.Add(context.Background(), bulkItem)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("done...")
 	}
 
 	return nil

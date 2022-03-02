@@ -16,14 +16,24 @@ type server struct {
 }
 
 func NewTestServer() *server {
-	s := &server{&Denylist{}, mux.NewRouter()}
+	denyList, err := NewDenylist()
+	if err != nil {
+		log.Default().Fatal(err) //todo error handling
+	}
+
+	s := &server{denyList, mux.NewRouter()}
 	s.routes()
 	return s
 }
 
 // NewServer creates a server with router and does all things from here
 func NewBrainServer() {
-	s := &server{&Denylist{}, mux.NewRouter()}
+	denyList, err := NewDenylist()
+	if err != nil {
+		log.Default().Fatal(err)
+	}
+
+	s := &server{denyList, mux.NewRouter()}
 	s.routes()
 	log.Fatalln(http.ListenAndServe(":8080", s.router))
 }

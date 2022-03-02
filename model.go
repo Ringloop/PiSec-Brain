@@ -12,9 +12,10 @@ type Indicator struct {
 }
 
 type ElasticIndicator struct {
-	Url    string
-	Ip     []string
-	Source string
+	Url         string   `json:"url"`
+	Ip          []string `json:"ip"`
+	Source      string   `json:"source"`
+	Reliability int      `json:"reliability"`
 	//TODO dates
 }
 

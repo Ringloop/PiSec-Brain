@@ -17,8 +17,8 @@ func TestGreet(t *testing.T) {
 	test := UrlsBulkRequest{
 		Source: "test-source",
 		Indicators: []Indicator{
-			{"google.com", ""},
-			{"evil.com", "127.0.0.1"},
+			{"google.com", "", 99},
+			{"evil.com", "127.0.0.1", 50},
 		},
 	}
 	var buf bytes.Buffer

@@ -44,7 +44,7 @@ func NewClient(url, user, pwd string) (*ElasticRepository, error) {
 	} else {
 		return &ElasticRepository{
 			es:            es,
-			numWorkers:    10,
+			numWorkers:    1,
 			flushBytes:    100000,
 			flushInterval: 30 * time.Second}, nil
 	}
