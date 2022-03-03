@@ -2,6 +2,7 @@ package elastic
 
 import (
 	"fmt"
+	"io/ioutil"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v7"
@@ -28,10 +29,16 @@ func NewDefaultClient() (*ElasticRepository, error) {
 }
 
 func NewClient(url, user, pwd string) (*ElasticRepository, error) {
+
+	cert, err := ioutil.ReadFile("/tmp/data/ca/ca.crt")
+	if err != nil {
+		return nil, err
+	}
 	cfg := elasticsearch.Config{
 		Addresses: []string{
 			url,
 		},
+		CACert: cert,
 	}
 
 	if user != "" {
