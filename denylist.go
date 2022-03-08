@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
+
+	b64 "encoding/base64"
 
 	"github.com/Ringloop/pisec/elastic"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
@@ -21,9 +24,16 @@ func NewDenylist() (*Denylist, error) {
 	if err != nil {
 		fmt.Println("cannot connect to es")
 		return nil, err
-	} else {
-		return &Denylist{es}, nil
 	}
+
+	fmt.Println("creating index mapping")
+	err = es.CreateIndex("denylist")
+	if err != nil {
+		fmt.Println("cannot create mapping!")
+		return nil, err
+	}
+
+	return &Denylist{es}, nil
 }
 
 func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
@@ -36,7 +46,7 @@ func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 
 	for _, ind := range indicators.Indicators {
 
-		toIndex := &ElasticIndicator{}
+		toIndex := &ElasticIndicator{Date: makeTimestamp()}
 		toIndex.Source = indicators.Source
 		toIndex.Url = ind.Url
 
@@ -45,25 +55,31 @@ func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 			if err != nil {
 				return err
 			}
-			toIndex.Ip = make([]string, len(ips))
+			//toIndex.Ip = make([]string, 1)
 			for _, resolvedIp := range ips {
-				toIndex.Ip = append(toIndex.Ip, resolvedIp.String())
+				if len(resolvedIp) > 0 {
+					fmt.Println("adding")
+					fmt.Println(resolvedIp)
+					toIndex.Ip = append(toIndex.Ip, resolvedIp.String())
+				}
 			}
 
 		} else {
-			toIndex.Ip = make([]string, 1)
+			//toIndex.Ip = make([]string, 1)
 			toIndex.Ip = append(toIndex.Ip, ind.Ip)
 		}
 
 		fmt.Println(toIndex)
+		fmt.Println(len(toIndex.Ip))
 		documentToSend, err := json.Marshal(toIndex)
 		if err != nil {
 			return err
 		}
 
 		bulkItem := esutil.BulkIndexerItem{
-			Action: "index",
-			Body:   bytes.NewBuffer(documentToSend),
+			DocumentID: b64.StdEncoding.EncodeToString([]byte(toIndex.Url)),
+			Action:     "index",
+			Body:       bytes.NewBuffer(documentToSend),
 			OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, res esutil.BulkIndexerResponseItem, err error) {
 				if err != nil {
 					log.Printf("ERROR: %s", err)
@@ -82,4 +98,8 @@ func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 	}
 
 	return nil
+}
+
+func makeTimestamp() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
 }

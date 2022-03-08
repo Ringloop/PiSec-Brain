@@ -12,6 +12,7 @@ type Indicator struct {
 }
 
 type ElasticIndicator struct {
+	Date        int64    `json:"date"`
 	Url         string   `json:"url"`
 	Ip          []string `json:"ip"`
 	Source      string   `json:"source"`
