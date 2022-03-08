@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Ringloop/pisec/elastic"
 	"github.com/gorilla/mux"
 )
 
@@ -16,7 +17,11 @@ type server struct {
 }
 
 func NewTestServer() *server {
-	denyList, err := NewDenylist()
+	es, err := elastic.NewDefaultClient()
+	if err != nil {
+		log.Default().Fatal(err) //todo error handling
+	}
+	denyList, err := NewDenylist(es)
 	if err != nil {
 		log.Default().Fatal(err) //todo error handling
 	}
@@ -28,7 +33,11 @@ func NewTestServer() *server {
 
 // NewServer creates a server with router and does all things from here
 func NewBrainServer() {
-	denyList, err := NewDenylist()
+	es, err := elastic.NewDefaultClient()
+	if err != nil {
+		log.Default().Fatal(err) //todo error handling
+	}
+	denyList, err := NewDenylist(es)
 	if err != nil {
 		log.Default().Fatal(err)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -20,20 +21,30 @@ type ElasticRepository struct {
 }
 
 func NewDefaultClient() (*ElasticRepository, error) {
-	if es, err := elasticsearch.NewDefaultClient(); err != nil {
-		return &ElasticRepository{}, err
-	} else {
-		return &ElasticRepository{
-			es:            es,
-			numWorkers:    1,
-			flushBytes:    100000,
-			flushInterval: 30 * time.Second}, nil
+	es, err := NewClient(
+		"https://localhost:9200",
+		"elastic", "integration-test",
+		"./pisec-brain-docker/certs/ca/ca.crt")
+	if err != nil {
+		return nil, err
 	}
+	return es, err
 }
 
-func NewClient(url, user, pwd string) (*ElasticRepository, error) {
+func NewEnvConfigClient() (*ElasticRepository, error) {
+	es, err := NewClient(
+		os.Getenv("ES_HOST"),
+		os.Getenv("ES_USER"),
+		os.Getenv("ES_PWD"),
+		os.Getenv("ES_CA_CERT"))
+	if err != nil {
+		return nil, err
+	}
+	return es, err
+}
 
-	cert, err := ioutil.ReadFile("./pisec-brain-docker/certs/ca/ca.crt")
+func NewClient(url, user, pwd, caPath string) (*ElasticRepository, error) {
+	cert, err := ioutil.ReadFile(caPath)
 	if err != nil {
 		return nil, err
 	}

@@ -19,20 +19,13 @@ type Denylist struct {
 	elasticRepo *elastic.ElasticRepository
 }
 
-func NewDenylist() (*Denylist, error) {
-	es, err := elastic.NewClient("https://localhost:9200", "elastic", "integration-test") //todo config here...
-	if err != nil {
-		fmt.Println("cannot connect to es")
-		return nil, err
-	}
-
-	fmt.Println("creating index mapping")
-	err = es.CreateIndex("denylist")
+func NewDenylist(es *elastic.ElasticRepository) (*Denylist, error) {
+	fmt.Println("pisec brain started, creating index mapping...")
+	err := es.CreateIndex("denylist")
 	if err != nil {
 		fmt.Println("cannot create mapping!")
 		return nil, err
 	}
-
 	return &Denylist{es}, nil
 }
 
@@ -55,11 +48,9 @@ func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 			if err != nil {
 				return err
 			}
-			//toIndex.Ip = make([]string, 1)
+
 			for _, resolvedIp := range ips {
 				if len(resolvedIp) > 0 {
-					fmt.Println("adding")
-					fmt.Println(resolvedIp)
 					toIndex.Ip = append(toIndex.Ip, resolvedIp.String())
 				}
 			}
@@ -69,8 +60,6 @@ func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 			toIndex.Ip = append(toIndex.Ip, ind.Ip)
 		}
 
-		fmt.Println(toIndex)
-		fmt.Println(len(toIndex.Ip))
 		documentToSend, err := json.Marshal(toIndex)
 		if err != nil {
 			return err
@@ -93,8 +82,6 @@ func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 		if err != nil {
 			return err
 		}
-
-		fmt.Println("done...")
 	}
 
 	return nil
