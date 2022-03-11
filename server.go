@@ -28,7 +28,7 @@ func NewServer() {
 func (s *server) insertUrl() http.HandlerFunc {
 
 	type UrlsBulkRequest struct {
-		Indicators []string `json:"inticators"`
+		Indicators []string `json:"indicators"`
 		Source     string
 	}
 
