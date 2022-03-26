@@ -3,7 +3,6 @@ package brain
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,7 +23,7 @@ func TestGreet(t *testing.T) {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(test)
 	if err != nil {
-		fmt.Errorf("error in encoding test req")
+		panic("error in encoding test req")
 	}
 	_, _ = http.NewRequest(http.MethodPost, "/api/v1/indicator/url", &buf)
 
