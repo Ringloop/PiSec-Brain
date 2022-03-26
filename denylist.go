@@ -42,6 +42,7 @@ func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 		toIndex := &ElasticIndicator{Date: makeTimestamp()}
 		toIndex.Source = indicators.Source
 		toIndex.Url = ind.Url
+		toIndex.Reliability = ind.Reliability
 
 		if ind.Ip == "" {
 			ips, err := net.LookupIP(ind.Url)
