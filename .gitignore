@@ -13,6 +13,6 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-./pisec-brain
-./pisec-brain-docker/certs
-./pisec-brain-docker/esdata01
+pisec-brain
+pisec-brain-docker/certs/
+pisec-brain-docker/esdata01/
