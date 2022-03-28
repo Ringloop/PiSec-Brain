@@ -2,9 +2,11 @@ package brain
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/Ringloop/pisec/elastic"
 	"github.com/gorilla/mux"
 )
 
@@ -14,25 +16,41 @@ type server struct {
 	router   *mux.Router
 }
 
-type okResponse struct {
-	Status string `json:"status"`
+func NewTestServer() *server {
+	es, err := elastic.NewDefaultClient()
+	if err != nil {
+		log.Default().Fatal(err) //todo error handling
+	}
+	denyList, err := NewDenylist(es)
+	if err != nil {
+		log.Default().Fatal(err) //todo error handling
+	}
+
+	s := &server{denyList, mux.NewRouter()}
+	s.routes()
+	return s
 }
 
 // NewServer creates a server with router and does all things from here
-func NewServer() {
-	s := &server{&Denylist{}, mux.NewRouter()}
+func NewBrainServer() {
+	es, err := elastic.NewDefaultClient()
+	if err != nil {
+		log.Default().Fatal(err) //todo error handling
+	}
+	denyList, err := NewDenylist(es)
+	if err != nil {
+		log.Default().Fatal(err)
+	}
+
+	s := &server{denyList, mux.NewRouter()}
 	s.routes()
 	log.Fatalln(http.ListenAndServe(":8080", s.router))
 }
 
 func (s *server) insertUrl() http.HandlerFunc {
 
-	type UrlsBulkRequest struct {
-		Indicators []string `json:"inticators"`
-		Source     string
-	}
-
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("serving request...")
 
 		if r.Method != "POST" {
 			http.Error(w, "method not supported", http.StatusBadRequest)
@@ -47,11 +65,13 @@ func (s *server) insertUrl() http.HandlerFunc {
 			return
 		}
 
-		ok, err := json.Marshal(okResponse{"Ok"})
+		ok, err := json.Marshal(OkResponse{"Ok"})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		s.denylist.AddUrls(&indicators)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(ok)
