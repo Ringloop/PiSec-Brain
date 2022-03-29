@@ -33,7 +33,7 @@ func NewTestServer() *server {
 
 // NewServer creates a server with router and does all things from here
 func NewBrainServer() {
-	es, err := elastic.NewDefaultClient()
+	es, err := elastic.NewEnvConfigClient()
 	if err != nil {
 		log.Default().Fatal(err) //todo error handling
 	}
