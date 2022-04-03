@@ -1,9 +1,12 @@
 package elastic
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -11,6 +14,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
+	"github.com/tidwall/gjson"
 )
 
 type ElasticRepository struct {
@@ -135,4 +139,92 @@ func (repo *ElasticRepository) GetBulkIndexer(index string) (esutil.BulkIndexer,
 func (repo *ElasticRepository) Delete(index string) error {
 	_, err := repo.es.Indices.Delete([]string{index})
 	return err
+}
+
+func (repo *ElasticRepository) FindAllUrls(index string, limit int, handler func(string)) error {
+	repo.Refresh(index)
+	log.Println("Scrolling the index...")
+	log.Println(strings.Repeat("-", 80))
+	res, err := repo.es.Search(
+		repo.es.Search.WithIndex(index),
+		repo.es.Search.WithSort("_doc"),
+		repo.es.Search.WithSize(limit),
+		repo.es.Search.WithScroll(time.Minute),
+	)
+	if err != nil {
+		return err
+	}
+
+	// Handle the first batch of data and extract the scrollID
+	//
+	json := read(res.Body)
+	res.Body.Close()
+
+	scrollID := gjson.Get(json, "_scroll_id").String()
+
+	var batchNum int
+	log.Println("Batch   ", batchNum)
+	log.Println("ScrollID", scrollID)
+	log.Println("IDs     ", gjson.Get(json, "hits.hits.#._id"))
+	log.Println(strings.Repeat("-", 80))
+
+	// Perform the scroll requests in sequence
+	//
+
+	for {
+		batchNum++
+
+		// Perform the scroll request and pass the scrollID and scroll duration
+		//
+		res, err := repo.es.Scroll(repo.es.Scroll.WithScrollID(scrollID), repo.es.Scroll.WithScroll(time.Minute))
+		if err != nil {
+			return err
+		}
+		if res.IsError() {
+			return fmt.Errorf("error response: %s", res)
+		}
+
+		json := read(res.Body)
+		res.Body.Close()
+
+		// Extract the scrollID from response
+		//
+		scrollID = gjson.Get(json, "_scroll_id").String()
+
+		// Extract the search results
+		//
+		hits := gjson.Get(json, "hits.hits")
+
+		// Break out of the loop when there are no results
+		//
+		if len(hits.Array()) < 1 {
+			log.Println("Finished scrolling")
+			break
+		} else {
+			log.Println("Batch   ", batchNum)
+			log.Println("ScrollID", scrollID)
+			log.Println("IDs     ", gjson.Get(hits.Raw, "#._id").Array())
+			results := gjson.Get(hits.Raw, "#._source.url").Array()
+			for _, result := range results {
+				handler(result.String())
+			}
+			log.Println(strings.Repeat("-", 80))
+		}
+	}
+
+	return nil
+}
+
+func (repo *ElasticRepository) Refresh(index string) error {
+	r := esapi.IndicesRefreshRequest{
+		Index: []string{index},
+	}
+	_, err := r.Do(context.Background(), repo.es)
+	return err
+}
+
+func read(r io.Reader) string {
+	var b bytes.Buffer
+	b.ReadFrom(r)
+	return b.String()
 }
