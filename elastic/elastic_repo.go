@@ -223,6 +223,19 @@ func (repo *ElasticRepository) Refresh(index string) error {
 	return err
 }
 
+func (repo *ElasticRepository) Count(index string) (int64, error) {
+	r := esapi.CountRequest{
+		Index: []string{index},
+	}
+	res, err := r.Do(context.Background(), repo.es)
+	if err != nil {
+		return 0, err
+	}
+	defer res.Body.Close()
+	json := read(res.Body)
+	return gjson.Get(json, "count").Int(), nil
+}
+
 func read(r io.Reader) string {
 	var b bytes.Buffer
 	b.ReadFrom(r)

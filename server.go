@@ -7,12 +7,14 @@ import (
 	"net/http"
 
 	"github.com/Ringloop/pisec/elastic"
+	"github.com/Ringloop/pisec/updater"
 	"github.com/gorilla/mux"
 )
 
 // -------------------   server.go
 type server struct {
 	denylist *Denylist
+	updater  *updater.Updater
 	router   *mux.Router
 }
 
@@ -26,7 +28,12 @@ func NewTestServer() *server {
 		log.Default().Fatal(err) //todo error handling
 	}
 
-	s := &server{denyList, mux.NewRouter()}
+	updater, err := updater.NewUpdater(es)
+	if err != nil {
+		log.Default().Fatal(err)
+	}
+
+	s := &server{denyList, updater, mux.NewRouter()}
 	s.routes()
 	return s
 }
@@ -41,8 +48,12 @@ func NewBrainServer() {
 	if err != nil {
 		log.Default().Fatal(err)
 	}
+	updater, err := updater.NewUpdater(es)
+	if err != nil {
+		log.Default().Fatal(err)
+	}
 
-	s := &server{denyList, mux.NewRouter()}
+	s := &server{denyList, updater, mux.NewRouter()}
 	s.routes()
 	log.Fatalln(http.ListenAndServe(":8080", s.router))
 }
@@ -73,6 +84,32 @@ func (s *server) insertUrl() http.HandlerFunc {
 
 		s.denylist.AddUrls(&indicators)
 
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(ok)
+	}
+}
+
+func (s *server) downloadUpdates() http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("serving request...")
+
+		if r.Method != "GET" {
+			http.Error(w, "method not supported", http.StatusBadRequest)
+			return
+		}
+
+		err := s.updater.DownloadIndicators()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		ok, err := json.Marshal(OkResponse{"Ok"})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(ok)
 	}
