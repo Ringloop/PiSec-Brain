@@ -25,10 +25,7 @@ type ElasticRepository struct {
 }
 
 func NewDefaultClient() (*ElasticRepository, error) {
-	es, err := NewClient(
-		"https://localhost:9200",
-		"elastic", "integration-test",
-		"./pisec-brain-docker/certs/ca/ca.crt")
+	es, err := NewClient("http://localhost:9200", "", "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -48,15 +45,18 @@ func NewEnvConfigClient() (*ElasticRepository, error) {
 }
 
 func NewClient(url, user, pwd, caPath string) (*ElasticRepository, error) {
-	cert, err := ioutil.ReadFile(caPath)
-	if err != nil {
-		return nil, err
-	}
 	cfg := elasticsearch.Config{
 		Addresses: []string{
 			url,
 		},
-		CACert: cert,
+	}
+
+	if caPath != "" {
+		cert, err := ioutil.ReadFile(caPath)
+		if err != nil {
+			return nil, err
+		}
+		cfg.CACert = cert
 	}
 
 	if user != "" {
