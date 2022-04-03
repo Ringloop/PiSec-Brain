@@ -99,18 +99,13 @@ func (s *server) downloadUpdates() http.HandlerFunc {
 			return
 		}
 
-		err := s.updater.DownloadIndicators()
+		json, err := s.updater.DownloadIndicators()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		ok, err := json.Marshal(OkResponse{"Ok"})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(ok)
+		w.Write(json)
 	}
 }
