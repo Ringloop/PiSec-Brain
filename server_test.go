@@ -3,16 +3,19 @@ package brain
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/Ringloop/pisec/elastic"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInsertAndDownload(t *testing.T) {
 	//given
+
+	var testDenyElements = map[string]struct{}{"google.com": {}, "evil.com": {}, "evil.it": {}}
+
 	repo, err := elastic.NewDefaultClient()
 	if err != nil {
 		panic(err)
@@ -43,9 +46,12 @@ func TestInsertAndDownload(t *testing.T) {
 
 	//then (the data is on elasticsearch)
 	err = repo.FindAllUrls("denylist", 1, func(url string) {
-		log.Println("found ", url)
+		require.Contains(t, testDenyElements, url)
+		delete(testDenyElements, url)
 	})
 	if err != nil {
 		panic(err)
 	}
+
+	require.Empty(t, testDenyElements)
 }
