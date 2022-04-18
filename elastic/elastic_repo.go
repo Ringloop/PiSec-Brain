@@ -141,6 +141,34 @@ func (repo *ElasticRepository) Delete(index string) error {
 	return err
 }
 
+func (repo *ElasticRepository) extractResults(res *esapi.Response, handler func(string), batchNum int) string {
+	// Handle the first batch of data and extract the scrollID
+	//
+	json := read(res.Body)
+	res.Body.Close()
+
+	// Extract the scrollID from response
+	scrollID := gjson.Get(json, "_scroll_id").String()
+
+	// Extract the search results
+	hits := gjson.Get(json, "hits.hits")
+
+	if len(hits.Array()) < 1 {
+		log.Println("Finished scrolling")
+		return ""
+	} else {
+		log.Println("Batch   ", batchNum)
+		log.Println("ScrollID", scrollID)
+		log.Println("IDs     ", gjson.Get(hits.Raw, "#._id").Array())
+		results := gjson.Get(hits.Raw, "#._source.url").Array()
+		for _, result := range results {
+			handler(result.String())
+		}
+		log.Println(strings.Repeat("-", 80))
+	}
+	return scrollID
+}
+
 func (repo *ElasticRepository) FindAllUrls(index string, limit int, handler func(string)) error {
 	repo.Refresh(index)
 	log.Println("Scrolling the index...")
@@ -155,23 +183,11 @@ func (repo *ElasticRepository) FindAllUrls(index string, limit int, handler func
 		return err
 	}
 
-	// Handle the first batch of data and extract the scrollID
-	//
-	json := read(res.Body)
-	res.Body.Close()
-
-	scrollID := gjson.Get(json, "_scroll_id").String()
-
 	var batchNum int
-	log.Println("Batch   ", batchNum)
-	log.Println("ScrollID", scrollID)
-	log.Println("IDs     ", gjson.Get(json, "hits.hits.#._id"))
-	log.Println(strings.Repeat("-", 80))
 
-	// Perform the scroll requests in sequence
-	//
+	scrollID := repo.extractResults(res, handler, batchNum)
 
-	for {
+	for scrollID != "" {
 		batchNum++
 
 		// Perform the scroll request and pass the scrollID and scroll duration
@@ -184,32 +200,8 @@ func (repo *ElasticRepository) FindAllUrls(index string, limit int, handler func
 			return fmt.Errorf("error response: %s", res)
 		}
 
-		json := read(res.Body)
-		res.Body.Close()
+		scrollID = repo.extractResults(res, handler, batchNum)
 
-		// Extract the scrollID from response
-		//
-		scrollID = gjson.Get(json, "_scroll_id").String()
-
-		// Extract the search results
-		//
-		hits := gjson.Get(json, "hits.hits")
-
-		// Break out of the loop when there are no results
-		//
-		if len(hits.Array()) < 1 {
-			log.Println("Finished scrolling")
-			break
-		} else {
-			log.Println("Batch   ", batchNum)
-			log.Println("ScrollID", scrollID)
-			log.Println("IDs     ", gjson.Get(hits.Raw, "#._id").Array())
-			results := gjson.Get(hits.Raw, "#._source.url").Array()
-			for _, result := range results {
-				handler(result.String())
-			}
-			log.Println(strings.Repeat("-", 80))
-		}
 	}
 
 	return nil
