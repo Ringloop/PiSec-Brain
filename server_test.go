@@ -97,6 +97,9 @@ func TestInsertAndDownloadIndicator(t *testing.T) {
 	res := downloadIndicatorsRec.Result()
 	defer res.Body.Close()
 	jsonRes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		panic(err)
+	}
 
 	bFilter := bloom.NewWithEstimates(1000000, 0.01)
 	bFilter.UnmarshalJSON(jsonRes)
