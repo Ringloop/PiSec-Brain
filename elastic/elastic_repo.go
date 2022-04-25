@@ -3,6 +3,7 @@ package elastic
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -205,6 +206,39 @@ func (repo *ElasticRepository) FindAllUrls(index string, limit int, handler func
 	}
 
 	return nil
+}
+
+func (repo *ElasticRepository) CheckSingleUrl(index string, url string) (bool, error) {
+	repo.Refresh(index)
+
+	var buf bytes.Buffer
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"query_string": map[string]interface{}{
+				"fieds": [1]string{
+					"url",
+				},
+				"query": map[string]interface{}{
+					"url": url,
+				},
+			},
+		},
+	}
+	if err := json.NewEncoder(&buf).Encode(query); err != nil {
+		return false, err
+	}
+
+	res, err := repo.es.Search(
+		repo.es.Search.WithIndex(index),
+		repo.es.Search.WithSort("_doc"),
+		repo.es.Search.WithScroll(time.Minute),
+	)
+	if err != nil {
+		return false, err
+	}
+
+	//WIP: Validate the result
+	return (res != nil), nil
 }
 
 func (repo *ElasticRepository) Refresh(index string) error {
