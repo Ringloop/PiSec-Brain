@@ -18,7 +18,7 @@ jobs:
         docker login -u $DOCKER_USER -p $DOCKER_PASSWORD 
    
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag ringloop/pisec-brain:latest
+      run: docker build . --file Dockerfile --tag ringloop/pisec-brain:$GITHUB_SHA
       
     - name: Docker Push
-      run: docker push ringloop/pisec-brain:latest
+      run: docker push ringloop/pisec-brain:$GITHUB_SHA
