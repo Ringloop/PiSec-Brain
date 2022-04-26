@@ -23,3 +23,11 @@ type ElasticIndicator struct {
 type OkResponse struct {
 	Status string `json:"status"`
 }
+
+type CheckUrlRequest struct {
+	Url string `json:"url"`
+}
+
+type CheckUrlResponse struct {
+	Result bool `json:"Result"`
+}
