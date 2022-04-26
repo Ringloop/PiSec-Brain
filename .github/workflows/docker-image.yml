@@ -16,8 +16,11 @@ jobs:
         DOCKER_PASSWORD: ${{secrets.DOCKERHUB_PWD}}
       run: |
         docker login -u $DOCKER_USER -p $DOCKER_PASSWORD 
+    - name: Set tag name
+      run: export TAG=$(date +%s)
+      
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag ringloop/pisec-brain:$(date +%s)
+      run: docker build . --file Dockerfile --tag ringloop/pisec-brain:$TAG
       
     - name: Docker Push
-      run: docker push ringloop/pisec-brain
+      run: docker push ringloop/pisec-brain:$TAG
