@@ -113,3 +113,60 @@ func TestInsertAndDownloadIndicator(t *testing.T) {
 	}
 
 }
+
+func TestInsertAndCheckUrl(t *testing.T) {
+	//given
+	repo, err := elastic.NewDefaultClient()
+	if err != nil {
+		panic(err)
+	}
+	repo.Delete("denylist")
+	server := NewTestServer()
+	server.routes()
+
+	//when (sendind crawler request)
+	test := UrlsBulkRequest{
+		Source:     "test-source",
+		Indicators: testIndicators,
+	}
+	var buf bytes.Buffer
+	err = json.NewEncoder(&buf).Encode(test)
+	if err != nil {
+		panic(err)
+	}
+	_, _ = http.NewRequest(http.MethodPost, "/api/v1/indicator/url", &buf)
+
+	insertReq := httptest.NewRequest("POST", "/api/v1/indicator/url", &buf)
+	insertRec := httptest.NewRecorder()
+	server.router.ServeHTTP(insertRec, insertReq)
+
+	//then
+	checkUrlTest := CheckUrlRequest{
+		Url: "evil.com",
+	}
+	var checkUrlBuf bytes.Buffer
+	err = json.NewEncoder(&checkUrlBuf).Encode(checkUrlTest)
+	if err != nil {
+		panic(err)
+	}
+
+	checkUrlReq := httptest.NewRequest("POST", "/api/v1/checkUrl", &checkUrlBuf)
+	checkUrlRec := httptest.NewRecorder()
+	server.router.ServeHTTP(checkUrlRec, checkUrlReq)
+
+	if want, got := http.StatusOK, checkUrlRec.Result().StatusCode; want != got {
+		t.Fatalf("expected a %d, instead got: %d", want, got)
+	}
+
+	res := checkUrlRec.Result()
+	defer res.Body.Close()
+	jsonRes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	var checkUrlRes CheckUrlResponse
+	json.Unmarshal(jsonRes, &checkUrlRes)
+	require.True(t, checkUrlRes.Result)
+
+}

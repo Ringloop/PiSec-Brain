@@ -209,18 +209,18 @@ func (repo *ElasticRepository) FindAllUrls(index string, limit int, handler func
 }
 
 func (repo *ElasticRepository) CheckUrl(index string, url string) (bool, error) {
+
+	var (
+		r map[string]interface{}
+	)
+
 	repo.Refresh(index)
 
 	var buf bytes.Buffer
 	query := map[string]interface{}{
 		"query": map[string]interface{}{
-			"query_string": map[string]interface{}{
-				"fieds": [1]string{
-					"url",
-				},
-				"query": map[string]interface{}{
-					"url": url,
-				},
+			"match": map[string]interface{}{
+				"url": url,
 			},
 		},
 	}
@@ -231,14 +231,52 @@ func (repo *ElasticRepository) CheckUrl(index string, url string) (bool, error) 
 	res, err := repo.es.Search(
 		repo.es.Search.WithIndex(index),
 		repo.es.Search.WithSort("_doc"),
+		repo.es.Search.WithBody(&buf),
 		repo.es.Search.WithScroll(time.Minute),
 	)
+
 	if err != nil {
+		log.Fatal("Error during execute the request")
+	}
+
+	if res.IsError() {
+		var e map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			log.Fatalf("Error parsing the response body: %s", err)
+		} else {
+			// Print the response status and error information.
+			log.Fatalf("[%s] %s: %s",
+				res.Status(),
+				e["error"].(map[string]interface{})["type"],
+				e["error"].(map[string]interface{})["reason"],
+			)
+		}
 		return false, err
 	}
 
+	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
+		log.Fatalf("Error parsing the response body: %s", err)
+	}
+	// Print the response status, number of results, and request duration.
+	log.Printf(
+		"[%s] %d hits; took: %dms",
+		res.Status(),
+		int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)),
+		int(r["took"].(float64)),
+	)
+
+	if res.StatusCode != 200 {
+		log.Fatalf("Error parsing the response body: %s", err)
+		return false, nil
+	}
+
 	//WIP: Validate the result
-	return (res != nil), nil
+	if int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)) >= 1 {
+		return true, nil
+	} else {
+		return false, nil
+	}
+
 }
 
 func (repo *ElasticRepository) Refresh(index string) error {
