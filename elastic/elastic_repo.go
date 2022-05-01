@@ -214,8 +214,6 @@ func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) 
 		r map[string]interface{}
 	)
 
-	repo.Refresh(index)
-
 	var buf bytes.Buffer
 	query := map[string]interface{}{
 		"query": map[string]interface{}{
