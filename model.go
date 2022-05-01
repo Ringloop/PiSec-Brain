@@ -29,5 +29,5 @@ type CheckUrlRequest struct {
 }
 
 type CheckUrlResponse struct {
-	Result bool `json:"Result"`
+	Result bool `json:"exists"`
 }
