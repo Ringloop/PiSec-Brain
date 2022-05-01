@@ -30,7 +30,7 @@ func (u *Updater) DownloadIndicators() ([]byte, error) {
 }
 
 func (u *Updater) CheckUrl(url string) (bool, error) {
-	found, err := u.elasticRepo.CheckUrl("denylist", url)
+	found, err := u.elasticRepo.ExistUrl("denylist", url)
 	if err != nil {
 		return false, err
 	}

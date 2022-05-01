@@ -208,7 +208,7 @@ func (repo *ElasticRepository) FindAllUrls(index string, limit int, handler func
 	return nil
 }
 
-func (repo *ElasticRepository) CheckUrl(index string, url string) (bool, error) {
+func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) {
 
 	var (
 		r map[string]interface{}
