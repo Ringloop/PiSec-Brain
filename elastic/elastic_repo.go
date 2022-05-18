@@ -261,11 +261,6 @@ func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) 
 		int(r["took"].(float64)),
 	)
 
-	if res.StatusCode != 200 {
-		log.Fatalf("Error parsing the response body: %s", err)
-		return false, nil
-	}
-
 	//WIP: Validate the result
 	if int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)) >= 1 {
 		return true, nil
