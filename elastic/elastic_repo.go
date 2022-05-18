@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,6 +44,40 @@ func NewEnvConfigClient() (*ElasticRepository, error) {
 		return nil, err
 	}
 	return es, err
+}
+
+func constructQuery(q string, size int) *strings.Reader {
+
+	// Build a query string from string passed to function
+	var query = `{"query": {`
+
+	// Concatenate query string with string passed to method call
+	query = query + q
+
+	// Use the strconv.Itoa() method to convert int to string
+	query = query + `}, "size": ` + strconv.Itoa(size) + `}`
+	fmt.Println("\nquery:", query)
+
+	// Check for JSON errors
+	isValid := json.Valid([]byte(query)) // returns bool
+
+	// Default query is "{}" if JSON is invalid
+	if isValid == false {
+		fmt.Println("constructQuery() ERROR: query string not valid:", query)
+		fmt.Println("Using default match_all query")
+		query = "{}"
+	} else {
+		fmt.Println("constructQuery() valid JSON:", isValid)
+	}
+	// Build a new string from JSON query
+	var b strings.Builder
+	b.WriteString(query)
+
+	// Instantiate a *strings.Reader object from string
+	read := strings.NewReader(b.String())
+
+	// Return a *strings.Reader object
+	return read
 }
 
 func NewClient(url, user, pwd, caPath string) (*ElasticRepository, error) {
@@ -210,11 +245,33 @@ func (repo *ElasticRepository) FindAllUrls(index string, limit int, handler func
 
 func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) {
 
+	queryString := `
+"match": 
+{"url": "$url"}
+`
+
+	var randomQuery = `
+"bool": {
+"filter": {
+"term": {
+"SomeBool" : true
+}
+}
+}`
+
 	var (
 		r map[string]interface{}
 	)
 
-	var buf bytes.Buffer
+	var buf, buf2 bytes.Buffer
+
+	queryString = strings.Replace(queryString, "$url", url, 2)
+	queryFromString := constructQuery(queryString, 1)
+	queryFromAnotherString := constructQuery(randomQuery, 2)
+
+	log.Println("Correct query: ")
+	log.Println(queryFromAnotherString)
+
 	query := map[string]interface{}{
 		"query": map[string]interface{}{
 			"match": map[string]interface{}{
@@ -222,13 +279,22 @@ func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) 
 			},
 		},
 	}
+
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
 		return false, err
 	}
 
+	log.Println("Using Query MAP: " + buf.String())
+
+	if err := json.NewEncoder(&buf2).Encode(queryFromString); err != nil {
+		return false, err
+	}
+
+	log.Println("Using Multiline String: " + buf2.String())
+
 	res, err := repo.es.Count(
 		repo.es.Count.WithIndex(index),
-		repo.es.Count.WithBody(&buf),
+		repo.es.Count.WithBody(&buf2),
 	)
 
 	if err != nil {

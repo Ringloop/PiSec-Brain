@@ -150,7 +150,7 @@ func TestInsertAndCheckUrl(t *testing.T) {
 		panic(err)
 	}
 
-	checkUrlReq := httptest.NewRequest("POST", "/api/v1/checkUrl", &checkUrlBuf)
+	checkUrlReq := httptest.NewRequest("POST", "/api/v1/indicators/details", &checkUrlBuf)
 	checkUrlRec := httptest.NewRecorder()
 	server.router.ServeHTTP(checkUrlRec, checkUrlReq)
 
