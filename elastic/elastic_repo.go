@@ -226,11 +226,9 @@ func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) 
 		return false, err
 	}
 
-	res, err := repo.es.Search(
-		repo.es.Search.WithIndex(index),
-		repo.es.Search.WithSort("_doc"),
-		repo.es.Search.WithBody(&buf),
-		repo.es.Search.WithScroll(time.Minute),
+	res, err := repo.es.Count(
+		repo.es.Count.WithIndex(index),
+		repo.es.Count.WithBody(&buf),
 	)
 
 	if err != nil {
