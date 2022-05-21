@@ -291,14 +291,6 @@ func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) 
 	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
 		log.Fatalf("Error parsing the response body: %s", err)
 	}
-	// Print the response status, number of results, and request duration.
-	// log.Printf(
-	// 	"[%s] %d hits; took: %dms",
-	// 	res.Status(),
-	// 	int(r["count"].(map[string]interface{})["value"].(float64)),
-	// 	int(r["took"].(float64)),
-	// )
-
 	log.Println("Received response: ", r)
 
 	//WIP: Validate the result
