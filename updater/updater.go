@@ -28,3 +28,12 @@ func (u *Updater) DownloadIndicators() ([]byte, error) {
 	json, err := bloomFilter.MarshalJSON()
 	return json, err
 }
+
+func (u *Updater) CheckUrl(url string) (bool, error) {
+	found, err := u.elasticRepo.ExistUrl("denylist", url)
+	if err != nil {
+		return false, err
+	}
+
+	return found, err
+}

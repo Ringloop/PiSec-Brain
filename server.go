@@ -109,3 +109,38 @@ func (s *server) downloadUpdates() http.HandlerFunc {
 		w.Write(json)
 	}
 }
+
+func (s *server) checkUrl() http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("serving request...")
+
+		if r.Method != "POST" {
+			http.Error(w, "method not supported", http.StatusBadRequest)
+			return
+		}
+
+		var jsonReq CheckUrlRequest
+
+		err := json.NewDecoder(r.Body).Decode(&jsonReq)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		res, err := s.updater.CheckUrl(jsonReq.Url)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		jsonRes, err := json.Marshal(CheckUrlResponse{res})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonRes)
+	}
+}

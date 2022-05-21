@@ -3,11 +3,13 @@ package elastic
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,6 +44,40 @@ func NewEnvConfigClient() (*ElasticRepository, error) {
 		return nil, err
 	}
 	return es, err
+}
+
+func constructQuery(q string, size int) *strings.Reader {
+
+	// Build a query string from string passed to function
+	var query = `{"query": {`
+
+	// Concatenate query string with string passed to method call
+	query = query + q
+
+	// Use the strconv.Itoa() method to convert int to string
+	query = query + `}, "size": ` + strconv.Itoa(size) + `}`
+	fmt.Println("\nquery:", query)
+
+	// Check for JSON errors
+	isValid := json.Valid([]byte(query)) // returns bool
+
+	// Default query is "{}" if JSON is invalid
+	if isValid == false {
+		fmt.Println("constructQuery() ERROR: query string not valid:", query)
+		fmt.Println("Using default match_all query")
+		query = "{}"
+	} else {
+		fmt.Println("constructQuery() valid JSON:", isValid)
+	}
+	// Build a new string from JSON query
+	var b strings.Builder
+	b.WriteString(query)
+
+	// Instantiate a *strings.Reader object from string
+	read := strings.NewReader(b.String())
+
+	// Return a *strings.Reader object
+	return read
 }
 
 func NewClient(url, user, pwd, caPath string) (*ElasticRepository, error) {
@@ -205,6 +241,65 @@ func (repo *ElasticRepository) FindAllUrls(index string, limit int, handler func
 	}
 
 	return nil
+}
+
+func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) {
+
+	var (
+		r map[string]interface{}
+	)
+
+	var query = `
+	{
+		"query":
+		{
+			"match":
+			{
+				"url":"$url"
+			}
+		}
+	}`
+	query = strings.Replace(query, "$url", url, 2)
+
+	log.Println("Correct query: ", query)
+
+	repo.Refresh(index)
+	res, err := repo.es.Count(
+		repo.es.Count.WithIndex(index),
+		repo.es.Count.WithBody(strings.NewReader(query)),
+	)
+
+	if err != nil {
+		log.Fatal("Error during execute the request")
+	}
+
+	if res.IsError() {
+		var e map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			log.Fatalf("Error parsing the response body: %s", err)
+		} else {
+			// Print the response status and error information.
+			log.Fatalf("[%s] %s: %s",
+				res.Status(),
+				e["error"].(map[string]interface{})["type"],
+				e["error"].(map[string]interface{})["reason"],
+			)
+		}
+		return false, err
+	}
+
+	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
+		log.Fatalf("Error parsing the response body: %s", err)
+	}
+	log.Println("Received response: ", r)
+
+	//WIP: Validate the result
+	if int(r["_shards"].(map[string]interface{})["successful"].(float64)) >= 1 {
+		return true, nil
+	} else {
+		return false, nil
+	}
+
 }
 
 func (repo *ElasticRepository) Refresh(index string) error {
