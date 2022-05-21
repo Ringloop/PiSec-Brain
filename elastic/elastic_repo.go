@@ -245,56 +245,27 @@ func (repo *ElasticRepository) FindAllUrls(index string, limit int, handler func
 
 func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) {
 
-	queryString := `
-"match": 
-{"url": "$url"}
-`
-
-	var randomQuery = `
-"bool": {
-"filter": {
-"term": {
-"SomeBool" : true
-}
-}
-}`
-
 	var (
 		r map[string]interface{}
 	)
 
-	var buf, buf2 bytes.Buffer
+	var query = `
+	{
+		"query":
+		{
+			"match":
+			{
+				"url":"$url"
+			}
+		}
+	}`
+	query = strings.Replace(query, "$url", url, 2)
 
-	queryString = strings.Replace(queryString, "$url", url, 2)
-	queryFromString := constructQuery(queryString, 1)
-	queryFromAnotherString := constructQuery(randomQuery, 2)
-
-	log.Println("Correct query: ")
-	log.Println(queryFromAnotherString)
-
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"match": map[string]interface{}{
-				"url": url,
-			},
-		},
-	}
-
-	if err := json.NewEncoder(&buf).Encode(query); err != nil {
-		return false, err
-	}
-
-	log.Println("Using Query MAP: " + buf.String())
-
-	if err := json.NewEncoder(&buf2).Encode(queryFromString); err != nil {
-		return false, err
-	}
-
-	log.Println("Using Multiline String: " + buf2.String())
+	log.Println("Correct query: ", query)
 
 	res, err := repo.es.Count(
 		repo.es.Count.WithIndex(index),
-		repo.es.Count.WithBody(&buf2),
+		repo.es.Count.WithBody(strings.NewReader(query)),
 	)
 
 	if err != nil {
@@ -320,15 +291,15 @@ func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) 
 		log.Fatalf("Error parsing the response body: %s", err)
 	}
 	// Print the response status, number of results, and request duration.
-	log.Printf(
-		"[%s] %d hits; took: %dms",
-		res.Status(),
-		int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)),
-		int(r["took"].(float64)),
-	)
+	// log.Printf(
+	// 	"[%s] %d hits; took: %dms",
+	// 	res.Status(),
+	// 	int(r["count"].(map[string]interface{})["value"].(float64)),
+	// 	int(r["took"].(float64)),
+	// )
 
 	//WIP: Validate the result
-	if int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)) >= 1 {
+	if r["count"].(float64) >= 1 {
 		return true, nil
 	} else {
 		return false, nil
