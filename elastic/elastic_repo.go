@@ -263,6 +263,7 @@ func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) 
 
 	log.Println("Correct query: ", query)
 
+	repo.Refresh(index)
 	res, err := repo.es.Count(
 		repo.es.Count.WithIndex(index),
 		repo.es.Count.WithBody(strings.NewReader(query)),
@@ -298,8 +299,10 @@ func (repo *ElasticRepository) ExistUrl(index string, url string) (bool, error) 
 	// 	int(r["took"].(float64)),
 	// )
 
+	log.Println("Received response: ", r)
+
 	//WIP: Validate the result
-	if r["count"].(float64) >= 1 {
+	if int(r["_shards"].(map[string]interface{})["successful"].(float64)) >= 1 {
 		return true, nil
 	} else {
 		return false, nil
