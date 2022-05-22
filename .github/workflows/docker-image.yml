@@ -30,7 +30,7 @@ jobs:
     - name: Deploy
       uses: appleboy/ssh-action@v0.1.4
       env:
-        COMMIT_ID: $GITHUB_SHA
+        COMMIT_ID: ${{ github.sha }}
       with:
         host: ${{ secrets.DEPLOY_HOST }}
         username: ${{ secrets.DEPLOY_USER }}
