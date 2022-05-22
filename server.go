@@ -38,6 +38,8 @@ func NewTestServer() *server {
 	return s
 }
 
+
+
 // NewServer creates a server with router and does all things from here
 func NewBrainServer() {
 	es, err := elastic.NewEnvConfigClient()
