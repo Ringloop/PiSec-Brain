@@ -1,6 +1,10 @@
 name: Docker Image CI
 
-on: push
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
 
@@ -22,3 +26,13 @@ jobs:
       
     - name: Docker Push
       run: docker push ringloop/pisec-brain:$GITHUB_SHA
+      
+    - name: Deploy
+      uses: appleboy/ssh-action@v0.1.4
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: 22
+        script: cd pisec && ./deploy-brain.sh
+
