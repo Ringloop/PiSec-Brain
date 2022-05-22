@@ -34,5 +34,5 @@ jobs:
         username: ${{ secrets.DEPLOY_USER }}
         password: ${{ secrets.DEPLOY_PWD }}
         port: 22
-        script: cd pisec && ./deploy-brain.sh
+        script: cd pisec && ./deploy-brain.sh $GITHUB_SHA
 
