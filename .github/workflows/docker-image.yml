@@ -32,9 +32,9 @@ jobs:
       env:
         COMMIT_ID: ${{ github.sha }}
       with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USER }}
-        password: ${{ secrets.DEPLOY_PWD }}
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USER }}
+        password: ${{ secrets.PASSWORD }}
         port: 22
         envs: COMMIT_ID
         script: cd pisec && ./deploy-brain.sh $COMMIT_ID
