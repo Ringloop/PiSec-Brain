@@ -46,6 +46,7 @@ func NewBrainServer() {
 	}
 	denyList, err := NewDenylist(es)
 	if err != nil {
+		fmt.Println(err)
 		log.Default().Fatal(err)
 	}
 	updater, err := updater.NewUpdater(es)
