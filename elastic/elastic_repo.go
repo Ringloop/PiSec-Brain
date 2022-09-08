@@ -81,6 +81,12 @@ func constructQuery(q string, size int) *strings.Reader {
 }
 
 func NewClient(url, user, pwd, caPath string) (*ElasticRepository, error) {
+
+	fmt.Println("Going to create a new ES Client")
+	fmt.Println("URL: ", url)
+	fmt.Println("User: ", user)
+	fmt.Println("Pwd: ", pwd)
+
 	cfg := elasticsearch.Config{
 		Addresses: []string{
 			url,
