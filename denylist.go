@@ -23,7 +23,7 @@ func NewDenylist(es *elastic.ElasticRepository) (*Denylist, error) {
 	fmt.Println("pisec brain started, creating index mapping...")
 	err := es.CreateIndex("denylist")
 	if err != nil {
-		fmt.Println("cannot create mapping!")
+		fmt.Println("cannot create mapping!", err)
 		return nil, err
 	}
 	return &Denylist{es}, nil
