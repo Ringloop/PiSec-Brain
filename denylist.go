@@ -83,6 +83,8 @@ func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 		if err != nil {
 			return err
 		}
+
+		
 	}
 
 	return nil
