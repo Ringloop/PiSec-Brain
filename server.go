@@ -6,15 +6,14 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Ringloop/pisec/cache"
 	"github.com/Ringloop/pisec/elastic"
-	"github.com/Ringloop/pisec/updater"
 	"github.com/gorilla/mux"
 )
 
 // -------------------   server.go
 type server struct {
 	denylist *Denylist
-	updater  *updater.Updater
 	router   *mux.Router
 }
 
@@ -23,17 +22,15 @@ func NewTestServer() *server {
 	if err != nil {
 		log.Default().Fatal(err) //todo error handling
 	}
-	denyList, err := NewDenylist(es)
+
+	redisClient := cache.NewTestClient()
+
+	denyList, err := NewDenylist(es, redisClient)
 	if err != nil {
 		log.Default().Fatal(err) //todo error handling
 	}
 
-	updater, err := updater.NewUpdater(es)
-	if err != nil {
-		log.Default().Fatal(err)
-	}
-
-	s := &server{denyList, updater, mux.NewRouter()}
+	s := &server{denyList, mux.NewRouter()}
 	s.routes()
 	return s
 }
@@ -44,16 +41,13 @@ func NewBrainServer() {
 	if err != nil {
 		log.Default().Fatal(err) //todo error handling
 	}
-	denyList, err := NewDenylist(es)
-	if err != nil {
-		log.Default().Fatal(err)
-	}
-	updater, err := updater.NewUpdater(es)
+	redisCache := cache.NewRedisClient()
+	denyList, err := NewDenylist(es, redisCache)
 	if err != nil {
 		log.Default().Fatal(err)
 	}
 
-	s := &server{denyList, updater, mux.NewRouter()}
+	s := &server{denyList, mux.NewRouter()}
 	s.routes()
 	log.Fatalln(http.ListenAndServe(":8080", s.router))
 }
@@ -99,7 +93,7 @@ func (s *server) downloadUpdates() http.HandlerFunc {
 			return
 		}
 
-		json, err := s.updater.DownloadIndicators()
+		json, err := s.denylist.DownloadIndicators()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -128,7 +122,7 @@ func (s *server) checkUrl() http.HandlerFunc {
 			return
 		}
 
-		res, err := s.updater.CheckUrl(jsonReq.Url)
+		res, err := s.denylist.CheckUrl(jsonReq.Url)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

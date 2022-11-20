@@ -11,22 +11,43 @@ import (
 
 	b64 "encoding/base64"
 
+	"github.com/Ringloop/pisec/cache"
 	"github.com/Ringloop/pisec/elastic"
+	"github.com/bits-and-blooms/bloom/v3"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
 )
 
 type Denylist struct {
 	elasticRepo *elastic.ElasticRepository
+	redisRepo   *cache.RedisRepository
 }
 
-func NewDenylist(es *elastic.ElasticRepository) (*Denylist, error) {
+func NewDenylist(es *elastic.ElasticRepository, redisRepo *cache.RedisRepository) (*Denylist, error) {
 	fmt.Println("pisec brain started, creating index mapping...")
 	err := es.CreateIndex("denylist")
 	if err != nil {
 		fmt.Println("cannot create mapping!")
 		return nil, err
 	}
-	return &Denylist{es}, nil
+	return &Denylist{es, redisRepo}, nil
+}
+
+func (denyList *Denylist) CheckUrl(url string) (bool, error) {
+	found, err := denyList.elasticRepo.ExistUrl("denylist", url)
+	if err != nil {
+		return false, err
+	}
+
+	return found, err
+}
+
+func (denyList *Denylist) DownloadIndicators() ([]byte, error) {
+	bloomFilter := bloom.NewWithEstimates(1000000, 0.01)
+
+	denyList.redisRepo.FindAllDenyList()
+
+	json, err := bloomFilter.MarshalJSON()
+	return json, err
 }
 
 func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
@@ -36,6 +57,8 @@ func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 		return err
 	}
 	defer elasticBulk.Close(context.Background())
+
+	bloomFilter := bloom.NewWithEstimates(1000000, 0.01)
 
 	for _, ind := range indicators.Indicators {
 
@@ -84,12 +107,42 @@ func (denyList *Denylist) AddUrls(indicators *UrlsBulkRequest) error {
 			return err
 		}
 
-		
+		bloomFilter.AddString(ind.Url)
+
 	}
+
+	mergeHadler := func(oldValue string) (string, error) {
+		if oldValue == "" {
+			return bloomFilterToJson(bloomFilter)
+		}
+
+		oldBloomFilter := bloom.NewWithEstimates(1000000, 0.01)
+		if err := oldBloomFilter.UnmarshalJSON([]byte(oldValue)); err != nil {
+			return "", err
+		}
+
+		oldBloomFilter.Merge(bloomFilter)
+		return bloomFilterToJson(oldBloomFilter)
+
+	}
+	denyList.redisRepo.AddDeny(indicators.Source, getDayOfTheMonth(), mergeHadler)
 
 	return nil
 }
 
 func makeTimestamp() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
+}
+
+func getDayOfTheMonth() int {
+	_, _, day := time.Now().Date()
+	return day
+}
+
+func bloomFilterToJson(filter *bloom.BloomFilter) (string, error) {
+	json, err := filter.MarshalJSON()
+	if err != nil {
+		return "", err
+	}
+	return string(json), nil
 }
